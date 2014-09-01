@@ -49,5 +49,16 @@ describe("crissCross", function() {
            assert.equal(count.F, 7, "It should be 7 tile in a group");
            assert.equal(count.G, 7, "It should be 7 tile in a group");
         });
-    });     
+    });
+    describe("getTile", function() {
+        it("should be return the proper tile", function(){
+            var game = crissCross(1, 2);
+            var tile = game.getTile(0,0);
+            assert.equal(tile.x, 0, "The tile x coordinate should be 0");
+            assert.equal(tile.y, 0, "The tile y coordinate should be 0");
+            tile = game.getTile(2,3);
+            assert.equal(tile.x, 2, "The tile x coordinate should be 2");
+            assert.equal(tile.y, 3, "The tile y coordinate should be 3");
+        });
+    }); 
 });

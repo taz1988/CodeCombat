@@ -101,14 +101,99 @@ function initTileGroups(tiles, n) {
     return tileGroups;
 }
 
+function getTile(x, y) {
+    return this.tileGrid[x][y];
+}
+
+function checkPath(tileProperty, owner) {
+    var stack = [];
+    var checkedElements = [];
+    var validPositions = [];
+    stack.push(this.humanData.tiles[0]);
+    checkedElements.push(this.humanData.tiles[0]);
+    while (stack.length > 0) {
+        var tile = stack.splice(0, 1)[0];
+        for (var i = 0; i < tile.neighbors.length; i++) {
+            if (tile.neighbors[i].owner == owner) {
+                stack.push(tile.neighbors[i]);
+            }
+        }
+        validPositions[tile[tileProperty]] = (validPositions[tile[tileProperty]] || 0) + 1;
+    }
+    var isAPath = true;
+    for (var i = 0; i < tileGrid.length; i++) {
+        if (validPositons[i] == 0) {
+            isAPath = false;
+        }
+    }
+    return isAPath;
+}
+
+function getWinner() {
+    var winner = null;
+    if (this.humanData.tiles.length >= 7) {
+        if (checkPath(x, this.humanData.team)) {
+            winner = this.humanData.team;
+        }
+    }
+    if (this.ogreData.tiles.length >= 7) {
+        if (checkPath(y, this.ogreData.team)) {
+            winner = this.ogreData.team;
+        }
+    }
+    return winner;
+}
+
+function initHumanCallback() {
+    this.myTiles = this.humanData.tiles;
+    this.ownedTiles = this.myTiles;
+    this.opponentTiles = this.ogreData.tiles;
+    this.gold = this.humanData.gold;
+    this.team = this.humanData.team;
+}
+
+function runATurn() {
+    
+}
+
+function initNewRound() {
+    this.humanData.tiles = [];
+    this.humanData.gold = 128;
+    this.ogreData.tiles = [];
+    this.ogreData.gold = 128;
+    this.turns = [];
+    this.round = (this.round || 0) + 1;
+}
+
+function runARound() {
+    this.initNewRound();
+    var winner = null;
+    while (winner == null) {
+        this.runATurn();
+        winner = this.getWinner();
+    }
+}
 
 module.exports = function(humanCallback, ogreCallback) {
     var tiles = initTiles(7);
     return {
+        humanData : {
+            tiles : [],
+            gold : 128,
+            team : "humans",
+            wins : 0
+        },
         humanCallback: humanCallback,
+        ogreData : {
+            tiles : [],
+            gold : 128,
+            team : "ogres",
+            wins : 0
+        },
         ogreCallback: ogreCallback,
         tileGrid : tiles,
-        tileGroups : initTileGroups(tiles, 7) 
+        tileGroups : initTileGroups(tiles, 7),
+        getTile : getTile 
     };
 };
 
