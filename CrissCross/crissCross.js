@@ -287,14 +287,23 @@ function runARound() {
         this.ogreData.wins++;
         console.log("Ogre wins");
     }
+    this.roundStat.humanWins = this.humanData.wins;
+    this.roundStat.ogreWins = this.ogreData.wins;
     console.log("Finished round. Human data: %s,\n Ogre data: %s,\n Turns: %s", util.inspect(this.humanData, inspectOptions), util.inspect(this.ogreData, inspectOptions), util.inspect(this.turns, inspectOptions));
+    this.roundStat.rounds.push({
+        humanGold : this.humanData.gold,
+        ogreGold : this.ogreData.gold,
+        turns : this.turns
+    });
 }
 
 function runAMatch(roundNumber) {
+    this.roundStat = { rounds : []};
     for (var i = 0; i < roundNumber; i++) {
         this.runARound();
     }
     console.log("End of the Match. Human won rounds: " + this.humanData.wins  + ", Ogre won rounds: " + this.ogreData.wins);
+    return this.roundStat;
 }
 
 
@@ -303,6 +312,9 @@ module.exports = function(humanCallback, ogreCallback) {
     var tiles = initTiles(size);
     console.log(humanCallback);
     return {
+        roundStat : {
+            rounds : []
+        },
         humanData : {
             tiles : [],
             gold : 128,

@@ -284,17 +284,17 @@ describe("crissCross", function() {
     describe("check simulation", function () {
         it("human should be win the match when ogre do nothing", function() {
             var game = crissCross(base.callback, doNothing.callback);
-            game.runAMatch(3);
+            var stat = game.runAMatch(3);
             assert.equal(game.round, 3, "It should be run 3 round");
-            assert.equal(game.humanData.wins, 3, "Human should be win");
-            assert.equal(game.ogreData.wins, 0, "Ogre should be lose");
+            assert.equal(stat.humanWins, 3, "Human should be win");
+            assert.equal(stat.ogreWins, 0, "Ogre should be lose");
         });
        it("ogre should be win the match when human do nothing", function() {
             var game = crissCross(doNothing.callback, base.callback);
-            game.runAMatch(3);
+            var stat = game.runAMatch(3);
             assert.equal(game.round, 3, "It should be run 3 round");
-            assert.equal(game.humanData.wins, 0, "Human should be lose");
-            assert.equal(game.ogreData.wins, 3, "Ogre should be win");
+            assert.equal(stat.humanWins, 0, "Human should be lose");
+            assert.equal(stat.ogreWins, 3, "Ogre should be win");
         });
 
     });
