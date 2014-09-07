@@ -1,4 +1,8 @@
-
+var util = require("util");
+var inspectOptions = {
+    color : true,
+    depth : 2
+}
 function createTileObject(x, y) {
     return {
         x : x,
@@ -105,23 +109,24 @@ function getTile(x, y) {
     return this.tileGrid[x][y];
 }
 
-function checkPath(tileProperty, owner) {
+function checkPath(tileProperty, owner, tiles) {
     var stack = [];
     var checkedElements = [];
     var validPositions = [];
-    stack.push(this.humanData.tiles[0]);
-    checkedElements.push(this.humanData.tiles[0]);
+    stack.push(tiles[0]);
+    checkedElements.push(tiles[0]);
     while (stack.length > 0) {
         var tile = stack.splice(0, 1)[0];
+        checkedElements.push(tile);
         for (var i = 0; i < tile.neighbors.length; i++) {
-            if (tile.neighbors[i].owner == owner) {
+            if (tile.neighbors[i].owner == owner && checkedElements.indexOf(tile.neighbors[i]) == 1) {
                 stack.push(tile.neighbors[i]);
             }
         }
         validPositions[tile[tileProperty]] = (validPositions[tile[tileProperty]] || 0) + 1;
     }
     var isAPath = true;
-    for (var i = 0; i < tileGrid.length; i++) {
+    for (var i = 0; i < this.size; i++) {
         if (validPositons[i] == 0) {
             isAPath = false;
         }
@@ -132,12 +137,12 @@ function checkPath(tileProperty, owner) {
 function getWinner() {
     var winner = null;
     if (this.humanData.tiles.length >= 7) {
-        if (checkPath(x, this.humanData.team)) {
+        if (checkPath("x", this.humanData.team, this.humanData.tiles)) {
             winner = this.humanData.team;
         }
     }
     if (this.ogreData.tiles.length >= 7) {
-        if (checkPath(y, this.ogreData.team)) {
+        if (checkPath("y", this.ogreData.team, this.ogreData.tiles)) {
             winner = this.ogreData.team;
         }
     }
@@ -152,30 +157,151 @@ function initHumanCallback() {
     this.team = this.humanData.team;
 }
 
+function initOgreCallback() {
+    this.myTiles = this.ogreData.tiles;
+    this.ownedTiles = this.myTiles;
+    this.opponentTiles = this.humanData.tiles;
+    this.gold = this.ogreData.gold;
+    this.team = this.ogreData.team;
+}
+
+function validateBidTile(bid) {
+    var invalidTile = false;
+    var desiredTile = bid.desiredTile || null;
+    if (desiredTile == null || desiredTile.owner != null || desiredTile.tileGroupLetter != this.actualGroupLetter || desiredTile.x < 0 || desiredTile.x > this.size || desiredTile.y < 0 || desiredTile.y > this.size) {
+       invalidTile = true;
+       console.log("Invalid bid, the tile is not valid! %s" + util.inspect(bid)); 
+    }
+    bid.invalidTile = invalidTile;
+}
+
+function validateBidPrice(bid, availableGold) {
+    var invalidPrice = false;
+    if (bid.bid == null || bid.bid > availableGold) {
+        invalidPrice = true;
+        console.log("Invalid bid, not enough money! %s", util.inspect(bid));
+    }
+    bid.invalidBid = invalidPrice;
+}
+
+function chooseWinnerBid(validBids) {
+    var choosedBid = null;
+    if (validBids.length > 0) {
+       var maxBid = validBids[0];
+       for (var i = 1; i < validBids.length; i++) {
+           if (maxBid.bid < validBids[i].bid) {
+                maxBid = validBids[i];
+           }
+       }
+       //TODO this part of the simulator not good, didn't handle equal bid situations
+       choosedBid = maxBid;
+    }
+    return choosedBid;
+}
+
 function runATurn() {
-    
+    this.initHumanCallback();
+    var humanBid = this.humanCallback(this.actualGroupLetter);
+    if (humanBid == null) {
+        humanBid = {};
+    } else {
+        humanBid.bid = humanBid.gold;
+    }
+    humanBid.team = this.humanData.team;
+    this.validateBidTile(humanBid);
+    validateBidPrice(humanBid, this.humanData.gold);
+    this.initOgreCallback();
+    var ogreBid = this.ogreCallback(this.actualGroupLetter);
+    if (ogreBid == null) {
+        ogreBid = {};
+    } else {
+        ogreBid.bid = ogreBid.gold;
+    }
+    ogreBid.team = this.ogreData.team;
+    this.validateBidTile(ogreBid);
+    validateBidPrice(ogreBid, this.ogreData.gold);
+    var validBids = [];
+    if (!humanBid.invalidBid && !humanBid.invalidTile) {
+        validBids.push(humanBid);
+    }
+    if (!ogreBid.invalidBid && !ogreBid.invalidTile) {
+        validBids.push(ogreBid);
+    }
+    var choosedBid = this.chooseWinnerBid(validBids);
+    if (choosedBid != null) {
+        if (choosedBid.team == this.ogreData.team) {
+            this.getTile(choosedBid.desiredTile.x, choosedBid.desiredTile.y).owner = this.ogreData.team;
+            this.ogreData.tiles.push(this.getTile(choosedBid.desiredTile.x, choosedBid.desiredTile.y));
+            this.ogreData.gold -= choosedBid.bid;   
+        } else {
+            this.getTile(choosedBid.desiredTile.x, choosedBid.desiredTile.y).owner = this.humanData.team;
+            this.humanData.gold -= choosedBid.bid;  
+            this.humanData.tiles.push(this.getTile(choosedBid.desiredTile.x, choosedBid.desiredTile.y)); 
+        }
+    }
+    this.turns.push({
+        number : this.turns.length,
+        tileGroup : this.actualGroupLetter,
+        humanGold : this.humanData.gold,
+        ogreGold : this.ogreData.gold,
+        humanBid : humanBid,
+        ogreBid : ogreBid
+    });
 }
 
 function initNewRound() {
     this.humanData.tiles = [];
     this.humanData.gold = 128;
     this.ogreData.tiles = [];
-    this.ogreData.gold = 128;
+    this.ogreData.gold  = 128;
     this.turns = [];
+    this.actualGroupLetter = "A";
     this.round = (this.round || 0) + 1;
-}
-
-function runARound() {
-    this.initNewRound();
-    var winner = null;
-    while (winner == null) {
-        this.runATurn();
-        winner = this.getWinner();
+    for (var i = 0; i < this.size; i++) {
+        for (var j = 0; j < this.size; j++) {
+            this.tileGrid[i][j].owner = null;
+        }
     }
 }
 
+function runARound() {
+    console.log("Start a new round...");
+    this.initNewRound();
+    var winner = null;
+    while (winner == null && this.turns.length < 250) {
+        this.runATurn();
+        //TODO don't static the last character (I am lazy bastard)
+        if (this.actualGroupLetter === "G") {
+            this.actualGroupLetter = "A";
+        } else {
+            this.actualGroupLetter = nextChar(this.actualGroupLetter);
+        }
+        winner = this.getWinner();
+    }
+    if (winner == null) {
+        console.log("Nobody wins! ");
+    } else if (winner == this.humanData.team) {
+        this.humanData.wins++;
+        console.log("Humans wins!");
+    } else {
+        this.ogreData.wins++;
+        console.log("Ogre wins");
+    }
+    console.log("Finished round. Human data: %s,\n Ogre data: %s,\n Turns: %s", util.inspect(this.humanData, inspectOptions), util.inspect(this.ogreData, inspectOptions), util.inspect(this.turns, inspectOptions));
+}
+
+function runAMatch(roundNumber) {
+    for (var i = 0; i < roundNumber; i++) {
+        this.runARound();
+    }
+    console.log("End of the Match. Human won rounds: " + this.humanData.wins  + ", Ogre won rounds: " + this.ogreData.wins);
+}
+
+
 module.exports = function(humanCallback, ogreCallback) {
-    var tiles = initTiles(7);
+    var size = 7;
+    var tiles = initTiles(size);
+    console.log(humanCallback);
     return {
         humanData : {
             tiles : [],
@@ -192,8 +318,19 @@ module.exports = function(humanCallback, ogreCallback) {
         },
         ogreCallback: ogreCallback,
         tileGrid : tiles,
-        tileGroups : initTileGroups(tiles, 7),
-        getTile : getTile 
+        tileGroups : initTileGroups(tiles, size),
+        getTile : getTile,
+        size : size,
+        runARound : runARound,
+        initNewRound : initNewRound,
+        runAMatch : runAMatch,
+        runATurn : runATurn,
+        getWinner : getWinner,
+        checkPath : checkPath,
+        initHumanCallback : initHumanCallback,
+        initOgreCallback : initOgreCallback,
+        chooseWinnerBid : chooseWinnerBid,
+        validateBidTile : validateBidTile
     };
 };
 
