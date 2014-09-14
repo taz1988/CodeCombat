@@ -112,7 +112,7 @@ function getTile(x, y) {
 function checkPath(tileProperty, owner, tiles) {
     var stack = [];
     var checkedElements = [];
-    var validPositions = [];
+    var validPositions = [0, 0, 0, 0, 0, 0, 0];
     stack.push(tiles[0]);
     checkedElements.push(tiles[0]);
     while (stack.length > 0) {
@@ -127,7 +127,7 @@ function checkPath(tileProperty, owner, tiles) {
     }
     var isAPath = true;
     for (var i = 0; i < this.size; i++) {
-        if (validPositons[i] == 0) {
+        if (validPositions[i] == 0) {
             isAPath = false;
         }
     }

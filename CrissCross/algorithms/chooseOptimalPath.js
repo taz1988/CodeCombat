@@ -1,45 +1,41 @@
-
-
-function callback(tileGroupLetter) {
-
 //*** new tree building part
 var groupLetters = ["A", "B", "C", "D", "E", "F", "G"];
-//The tree root
-var root;
+
+var self = this;
 
 function fillTileNeighbourhoods(tiles, tile) {
     if (tile.x > 0) {
         tile.neighbors.push(tiles[tile.x - 1][tile.y]);
     }
-    if (tile.x < 7) {
+    if (tile.x < 6) {
         tile.neighbors.push(tiles[tile.x + 1][tile.y]);
     }
     if (tile.y > 0) {
         tile.neighbors.push(tiles[tile.x][tile.y - 1]);
     }
-    if (tile.y < 7) {
+    if (tile.y < 6) {
         tile.neighbors.push(tiles[tile.x][tile.y + 1]);
     }
-    if (tile.x < 7 && tile.y > 0) {
+    if (tile.x < 6 && tile.y > 0) {
         tile.neighbors.push(tiles[tile.x + 1][tile.y - 1]);
     }
-    if (tile.x < 7 && tile.y < limit) {
+    if (tile.x < 6 && tile.y < 6) {
         tile.neighbors.push(tiles[tile.x + 1][tile.y + 1]);
     }
     if (tile.x > 0 && tile.y > 0) {
         tile.neighbors.push(tiles[tile.x - 1][tile.y - 1]);
     }
-    if (tile.x > 0 && tile.y < 7) {
+    if (tile.x > 0 && tile.y < 6) {
         tile.neighbors.push(tiles[tile.x - 1][tile.y + 1]);
     }
 }
 
-function getTilesForTree() {
+var getTilesForTree = function () {
     var tilesForTree = [];
     for (var i = 0; i < 7; i++) {
         var row = [];
         for (var j = 0; j < 7; j++) {
-            var tile = this.getTile(i, j);
+            var tile = self.getTile(i, j);
             row.push({
                 x : tile.x,
                 y : tile.y,
@@ -57,16 +53,15 @@ function getTilesForTree() {
     return tilesForTree;
 }
 
-
 function getTilesGroups() {
     var tileGroupsForTree = [];
     for (var i = 0; i < groupLetters.length; i++) {
-        var tiles = this.tileGroups[groupLetters[i]];
+        var tiles = self.tileGroups[groupLetters[i]];
         var group = [];
         for (var j = 0; j < tiles.length; j++) {
             if (tiles[j].owner == null) {
                 group.push({
-                    x : tiles[x].x,
+                    x : tiles[j].x,
                     y : tiles[j].y
                 });
             }
@@ -77,18 +72,17 @@ function getTilesGroups() {
 }
 
 function initTree() {
-    root = {
+    this.root = {
         x : -1,
         y : -1,
-        parent : null,
-        childs : []
+        parent : null
     }
 }
 
 function checkPath(tileProperty, owner, tile) {
     var stack = [];
     var checkedElements = [];
-    var validPositions = [];
+    var validPositions = [0, 0, 0, 0, 0, 0, 0];
     stack.push(tile);
     checkedElements.push(tile);
     while (stack.length > 0) {
@@ -102,8 +96,8 @@ function checkPath(tileProperty, owner, tile) {
         validPositions[tile[tileProperty]] = (validPositions[tile[tileProperty]] || 0) + 1;
     }
     var isAPath = true;
-    for (var i = 0; i < this.size; i++) {
-        if (validPositons[i] == 0) {
+    for (var i = 0; i < 6; i++) {
+        if (validPositions[i] == 0) {
             isAPath = false;
         }
     }
@@ -111,52 +105,55 @@ function checkPath(tileProperty, owner, tile) {
 }
 
 
-function buildTree(node, actualGroupLetter) {
-    
+function buildPath(actualGroupLetter) {
+   var groupIndex = groupLetters.indexOf(actualGroupLetter);
+   var tilesForTree = getTilesForTree();
+   var tilesGroups = getTilesGroups();
+   initTree();
+   var stack = [root];
+   var bestLeaf = null;
+   while (stack.length != 0 && bestLeaf == null) {
+	var nextStack = [];
+        while (stack.length != 0) {
+            var actual = stack.splice(0, 1);
+	    for (var i = 0; i < tilesGroups[groupIndex].length; i++) {
+	        var tile = tilesForTree[tilesGroups[groupIndex][i].x][tilesGroups[groupIndex][i].y];
+	        if (tile.owner == null) {
+                    tile.owner = "humans";
+                    var newLeaf = {
+                           x : tile.x,
+                           y : tile.y,
+                           parent : actual
+                    };
+		    if (checkPath("x", "humans", tile) == true) {
+				console.log("bestLeaf");
+				console.log(bestLeaf);
+		        	bestLeaf = newLeaf;
+		    }
+                    nextStack.push(bestLeaf);
+	        }	
+	    }
+        }
+        stack = nextStack;
+   	groupIndex++;
+	if (groupIndex > 6) {
+		groupIndex = 0;
+	}
+    }
+    var path = [];
+    while (bestLeaf != null && bestLeaf.x != -1 && bestLeaf.y != -1) {
+        path.push([bestLeaf.x, bestLeaf.y]);
+        bestLeaf = bestLeaf.parent;   
+    }
+    return path;
 };
-//*** end tree
-
-coordinatesToBuy = [[0,0], [1,1], [2,2], [3,3], [4,4], [5,5], [6,6]];
-console.log(tileGroupLetter);
-var tiles = this.tileGroups[tileGroupLetter];  // tiles available this turn
-var tileIWant = null;
-var tile, coordinates, i, j;
-
-for (i = 0; i < tiles.length; i++) {
-  tile = tiles[i];
-  if (tile.owner) continue;  // can't buy a tile that's been bought
-
-  for (j = 0; j < coordinatesToBuy.length; j++) {
-    coordinates = coordinatesToBuy[j];
-    if (coordinates[0] !== tile.x) continue;
-    if (coordinates[1] !== tile.y) continue;
-    
-    // We have a match!
-    tileIWant = tile;
-    break;
-  }
-  if(tileIWant) break;
-}
-
-
-// If none of the tiles you want are available, skip this round.
-if(!tileIWant) { return null; }
-
-//////////////////////////////////////////////////////////////////////////////
-// 2. Choose your bid price. You only pay and win the tile if your bid wins.
-
-var myBid = Math.floor(10 + Math.random() * 10);
-
-//////////////////////////////////////////////////////////////////////////////
-// 3. Respond with an object with properties 'gold' and 'desiredTile'.
-
-return {gold: myBid, desiredTile: tileIWant};
-
-
-// -- FOR MORE INFO, READ THE GUIDE -- //
-//         It's at the top bar.
-}
 
 module.exports = {
-        callback : callback
+        root : root,
+        fillTileNeighbourhoods : fillTileNeighbourhoods,
+        getTilesForTree : getTilesForTree,
+        getTilesGroups : getTilesGroups,
+        initTree : initTree,
+        checkPath : checkPath,
+        buildPath : buildPath
     };
